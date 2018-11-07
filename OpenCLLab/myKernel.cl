@@ -1,8 +1,14 @@
-__kernel void myKernel(__global int* inData, __global int* outData)
+__kernel void myKernel(__global int* inData, __global int* outData, int width, int height)
 {
-	//outData[get_global_id(0)] = inData[get_global_id(0)] * 2;
+	union {
+		unsigned int rgba;
+		struct {
+			char r;
+			char g;
+			char b;
+			char a;
+		};
+	} colour;
 
-	size_t id = get_global_id(1) * get_global_size(0) + get_global_id(0);
-
-	outData[id] = inData[id] * 2;
+	outData[get_global_id(0)] = inData[get_global_id(0)];
 }

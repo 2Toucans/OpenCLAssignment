@@ -28,14 +28,14 @@ bool CLHandler::setup(cl::Platform *platform, cl::Device *device, cl::Context *c
 	*device = devices[0]; //arbitrarily pick the first device to use
 
 	//Prints the name and version of the platform being used
-	std::cout << "Platform Name " << platform->getInfo<CL_PLATFORM_NAME>() << std::endl;
-	std::cout << "Platform Version " << platform->getInfo<CL_PLATFORM_VERSION>() << std::endl;
+	//std::cout << "Platform Name " << platform->getInfo<CL_PLATFORM_NAME>() << std::endl;
+	//std::cout << "Platform Version " << platform->getInfo<CL_PLATFORM_VERSION>() << std::endl;
 
 	//Prints the name and version of all available devices of the specified type
 	for (int i = 0; i < devices.size(); i++)
 	{
-		std::cout << "Device " << i << " Name " << devices[i].getInfo<CL_DEVICE_NAME>() << std::endl;
-		std::cout << "Device " << i << " Version " << devices[i].getInfo<CL_DEVICE_VERSION>() << std::endl;
+		//std::cout << "Device " << i << " Name " << devices[i].getInfo<CL_DEVICE_NAME>() << std::endl;
+		//std::cout << "Device " << i << " Version " << devices[i].getInfo<CL_DEVICE_VERSION>() << std::endl;
 	}
 
 	//Creates a context that contains the chosen device
