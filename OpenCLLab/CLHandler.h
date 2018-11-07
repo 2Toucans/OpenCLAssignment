@@ -7,6 +7,6 @@
 class CLHandler
 {
 	public:
-		static bool setup(cl::Platform *platform, cl::Device *device, cl::Context *context);
+		static bool setup(cl::Platform *platform, std::vector<cl::Device> *device, cl::Context *context, int deviceType);
 		static bool build(std::string kernelName, cl::Context *context, cl::Device *device, cl::Program *program);
 };

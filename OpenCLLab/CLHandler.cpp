@@ -1,6 +1,6 @@
 #include "CLHandler.h"
 
-bool CLHandler::setup(cl::Platform *platform, cl::Device *device, cl::Context *context)
+bool CLHandler::setup(cl::Platform *platform, std::vector<cl::Device> *devices, cl::Context *context, int deviceType)
 {
 	//Gets a list of the platforms (implementation SDKs) you have installed
 	std::vector<cl::Platform> platforms;
@@ -14,32 +14,44 @@ bool CLHandler::setup(cl::Platform *platform, cl::Device *device, cl::Context *c
 	}
 
 	//Gets a list of all the hardware devices of a specified type that can be used for processing
-	std::vector<cl::Device> devices;
-	platforms[0].getDevices(CL_DEVICE_TYPE_GPU, &devices); //CURRENTLY JUST CHECKS FOR GPUS
+	std::vector<cl::Device> myDevices;
+
+	switch (deviceType)
+	{
+		case 0:
+			platforms[0].getDevices(CL_DEVICE_TYPE_GPU, &myDevices);
+			break;
+		case 1:
+			platforms[0].getDevices(CL_DEVICE_TYPE_CPU, &myDevices);
+			break;
+		case 2:
+			platforms[0].getDevices(CL_DEVICE_TYPE_ALL, &myDevices);
+			break;
+	}
 
 	//If a device can't be found, setup fails
-	if (devices.size() == 0)
+	if (myDevices.size() == 0)
 	{
 		std::cout << "Could not find a device." << std::endl;
 		return false;
 	}
 
 	*platform = platforms[0]; //pick the first platform (for some reason mine shows 2 of the same platforms)
-	*device = devices[0]; //arbitrarily pick the first device to use
+	*devices = myDevices; //arbitrarily pick the first device to use
 
 	//Prints the name and version of the platform being used
 	//std::cout << "Platform Name " << platform->getInfo<CL_PLATFORM_NAME>() << std::endl;
 	//std::cout << "Platform Version " << platform->getInfo<CL_PLATFORM_VERSION>() << std::endl;
 
 	//Prints the name and version of all available devices of the specified type
-	for (int i = 0; i < devices.size(); i++)
+	for (int i = 0; i < myDevices.size(); i++)
 	{
 		//std::cout << "Device " << i << " Name " << devices[i].getInfo<CL_DEVICE_NAME>() << std::endl;
 		//std::cout << "Device " << i << " Version " << devices[i].getInfo<CL_DEVICE_VERSION>() << std::endl;
 	}
 
 	//Creates a context that contains the chosen device
-	*context = cl::Context(*device);
+	*context = cl::Context(myDevices);
 
 	return true;
 }
