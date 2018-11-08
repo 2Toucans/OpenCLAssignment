@@ -18,10 +18,26 @@ int width, height;
 //Fun Fact: Basically every OpenCL function returns an error code for debugging
 //You can even pass in a reference to a cl_int to constructors to check for errors!
 
+unsigned int getPixel(unsigned int* inData, int x, int y, int w, int h) {
+	if (x < 0) {
+		x = 0;
+	}
+	else if (x > w - 1) {
+		x = w - 1;
+	}
+	if (y < 0) {
+		y = 0;
+	}
+	else if (y > h - 1) {
+		y = h - 1;
+	}
+	return inData[y * w + x];
+}
+
 int main()
 {
 	//FIRST DO IT WITH GPU
-
+	std::cout << "=======================        GPU        =======================" << std::endl << std::endl;
 	//Gets the platforms and devices to be used
 	if (!CLHandler::setup(&platform, &devices, &context, 0))
 		std::cin.get();
@@ -91,6 +107,7 @@ int main()
 
 
 	//SECOND DO IT WITH CPU
+	std::cout << std::endl << "=======================        CPU        =======================" << std::endl << std::endl;
 
 	//Gets the platforms and devices to be used
 	if (!CLHandler::setup(&platform, &devices, &context, 1))
@@ -153,6 +170,7 @@ int main()
 
 
 	//THIRD DO IT WITH GPU AND CPU
+	std::cout << std::endl << "=======================     GPU & CPU     =======================" << std::endl << std::endl;
 
 	//Gets the platforms and devices to be used
 	if (!CLHandler::setup(&platform, &devices, &context, 2))
@@ -218,9 +236,60 @@ int main()
 
 	std::cout << "Time to write = " << timeElapsed << std::endl;
 
-
 	//FINALLY DO IT SERIALLY
+	std::cout << std::endl << "=======================      Serial       =======================" << std::endl << std::endl;
 
+	imageData = (unsigned int*)stbi_load("../img.png", &width, &height, NULL, STBI_rgb_alpha);
+
+	startTime = clock();
+
+	float gauss[] = {
+		0.058379266789788185f, 0.06705176688958259f,0.058379266789788185f,0.038530430847356856f,0.01927728703018819f,
+		0.06705176688958259f,0.0770126055060589f,0.06705176688958259f,0.044254297962235976f,0.022141013878541074f,
+		0.058379266789788185f,0.06705176688958259f,0.058379266789788185f,0.038530430847356856f,0.01927728703018819f,
+		0.038530430847356856f,0.044254297962235976f,0.038530430847356856f,0.025430160105104932f,0.012723047336580126f,
+		0.01927728703018819f,0.022141013878541074f,0.01927728703018819f,0.012723047336580126f,0.006365509806458638f
+	};
+	int kernelSize = 5;
+	int mid = kernelSize / 2;
+
+	// Code here
+	result = new unsigned int[numPixels];
+	for (int i = 0; i < numPixels; i++) {
+		int x = i % width;
+		int y = i / width;
+		float accR = 0.0f;
+		float accG = 0.0f;
+		float accB = 0.0f;
+
+		for (int i = 0; i < kernelSize; i++) {
+			for (int j = 0; j < kernelSize; j++) {
+				int kernelPos = i * kernelSize + j;
+				unsigned int col = getPixel(imageData, x + j - mid, y + i - mid, width, height);
+				int r = (col & 0xFF000000) >> 24;
+				int g = (col & 0x00FF0000) >> 16;
+				int b = (col & 0x0000FF00) >> 8;
+				accR += r * gauss[kernelPos];
+				accG += g * gauss[kernelPos];
+				accB += b * gauss[kernelPos];
+			}
+		}
+
+		result[i] = ((int)accR << 24) + ((int)accG << 16) + ((int)accB << 8) + (imageData[i] & 0x000000FF);
+	}
+
+	endTime = clock();
+	timeElapsed = (endTime - startTime) / 1000.0;
+	startTime = endTime;
+
+	std::cout << "Time to process = " << timeElapsed << std::endl;
+
+	stbi_write_png("../imgserial.png", width, height, STBI_rgb_alpha, result, width * STBI_rgb_alpha);
+
+	endTime = clock();
+	timeElapsed = (endTime - startTime) / 1000.0;
+
+	std::cout << "Time to write = " << timeElapsed << std::endl;
 
 	std::cin.get();
 }
