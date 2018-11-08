@@ -86,8 +86,10 @@ int main()
 	//If unspecified compiler will decide for you
 	err = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(numPixels));
 
+	unsigned int *gpuData = new unsigned int[numPixels];
+
 	//Can also use enqueueMapBuffer, then memCopy, then unMap, to speed this up
-	err = queue.enqueueReadBuffer(outBuf, CL_FALSE, 0, sizeof(unsigned int) * numPixels, imageData);
+	err = queue.enqueueReadBuffer(outBuf, CL_FALSE, 0, sizeof(unsigned int) * numPixels, gpuData);
 
 	//Ensures everything is finished excecuting before continuing
 	cl::finish();
@@ -96,14 +98,14 @@ int main()
 	double timeElapsed = (endTime - startTime) / 1000.0;
 	startTime = endTime;
 
-	std::cout << "Time to process = " << timeElapsed << std::endl;
+	std::cout << "\nTime to process = " << timeElapsed << std::endl;
 
-	stbi_write_png("../imggpu.png", width, height, STBI_rgb_alpha, imageData, width * STBI_rgb_alpha);
+	stbi_write_png("../imggpu.png", width, height, STBI_rgb_alpha, gpuData, width * STBI_rgb_alpha);
 
 	endTime = clock();
 	timeElapsed = (endTime - startTime) / 1000.0;
 
-	std::cout << "Time to write = " << timeElapsed << std::endl;
+	//std::cout << "Time to write = " << timeElapsed << std::endl;
 
 
 	//SECOND DO IT WITH CPU
@@ -149,8 +151,10 @@ int main()
 
 	err = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(numPixels));
 
+	unsigned int *cpuData = new unsigned int[numPixels];
+
 	//Can also use enqueueMapBuffer, then memCopy, then unMap, to speed this up
-	err = queue.enqueueReadBuffer(outBuf, CL_FALSE, 0, sizeof(unsigned int) * numPixels, imageData);
+	err = queue.enqueueReadBuffer(outBuf, CL_FALSE, 0, sizeof(unsigned int) * numPixels, cpuData);
 
 	//Ensures everything is finished excecuting before continuing
 	cl::finish();
@@ -159,14 +163,14 @@ int main()
 	timeElapsed = (endTime - startTime) / 1000.0;
 	startTime = endTime;
 
-	std::cout << "Time to process = " << timeElapsed << std::endl;
+	std::cout << "\nTime to process = " << timeElapsed << std::endl;
 
-	stbi_write_png("../imgcpu.png", width, height, STBI_rgb_alpha, imageData, width * STBI_rgb_alpha);
+	stbi_write_png("../imgcpu.png", width, height, STBI_rgb_alpha, cpuData, width * STBI_rgb_alpha);
 
 	endTime = clock();
 	timeElapsed = (endTime - startTime) / 1000.0;
 
-	std::cout << "Time to write = " << timeElapsed << std::endl;
+	//std::cout << "Time to write = " << timeElapsed << std::endl;
 
 
 	//THIRD DO IT WITH GPU AND CPU
@@ -214,11 +218,11 @@ int main()
 	err = queue.enqueueNDRangeKernel(kernel, 0, cl::NDRange(numPixels / 2));
 	err = queue2.enqueueNDRangeKernel(kernel, numPixels / 2, cl::NDRange(numPixels / 2 + half));
 
-	unsigned int *result = new unsigned int[numPixels];
+	unsigned int *bothData = new unsigned int[numPixels];
 
 	//Can also use enqueueMapBuffer, then memCopy, then unMap, to speed this up
-	err = queue.enqueueReadBuffer(outBuf, CL_FALSE, 0, sizeof(unsigned int) * (numPixels / 2), result);
-	err = queue2.enqueueReadBuffer(outBuf, CL_FALSE, sizeof(unsigned int) * numPixels / 2, sizeof(unsigned int) * (numPixels / 2 + half), result + (numPixels / 2));
+	err = queue.enqueueReadBuffer(outBuf, CL_FALSE, 0, sizeof(unsigned int) * (numPixels / 2), bothData);
+	err = queue2.enqueueReadBuffer(outBuf, CL_FALSE, sizeof(unsigned int) * numPixels / 2, sizeof(unsigned int) * (numPixels / 2 + half), bothData + (numPixels / 2));
 
 	//Ensures everything is finished excecuting before continuing
 	cl::finish();
@@ -227,14 +231,14 @@ int main()
 	timeElapsed = (endTime - startTime) / 1000.0;
 	startTime = endTime;
 
-	std::cout << "Time to process = " << timeElapsed << std::endl;
+	std::cout << "\nTime to process = " << timeElapsed << std::endl;
 
-	stbi_write_png("../imgboth.png", width, height, STBI_rgb_alpha, result, width * STBI_rgb_alpha);
+	stbi_write_png("../imgboth.png", width, height, STBI_rgb_alpha, bothData, width * STBI_rgb_alpha);
 
 	endTime = clock();
 	timeElapsed = (endTime - startTime) / 1000.0;
 
-	std::cout << "Time to write = " << timeElapsed << std::endl;
+	//std::cout << "Time to write = " << timeElapsed << std::endl;
 
 	//FINALLY DO IT SERIALLY
 	std::cout << std::endl << "=======================      Serial       =======================" << std::endl << std::endl;
@@ -254,7 +258,7 @@ int main()
 	int mid = kernelSize / 2;
 
 	// Code here
-	result = new unsigned int[numPixels];
+	unsigned int *serialData = new unsigned int[numPixels];
 	for (int i = 0; i < numPixels; i++) {
 		int x = i % width;
 		int y = i / width;
@@ -275,7 +279,7 @@ int main()
 			}
 		}
 
-		result[i] = ((int)accR << 24) + ((int)accG << 16) + ((int)accB << 8) + (imageData[i] & 0x000000FF);
+		serialData[i] = ((int)accR << 24) + ((int)accG << 16) + ((int)accB << 8) + (imageData[i] & 0x000000FF);
 	}
 
 	endTime = clock();
@@ -284,12 +288,13 @@ int main()
 
 	std::cout << "Time to process = " << timeElapsed << std::endl;
 
-	stbi_write_png("../imgserial.png", width, height, STBI_rgb_alpha, result, width * STBI_rgb_alpha);
+	stbi_write_png("../imgserial.png", width, height, STBI_rgb_alpha, serialData, width * STBI_rgb_alpha);
 
 	endTime = clock();
 	timeElapsed = (endTime - startTime) / 1000.0;
 
-	std::cout << "Time to write = " << timeElapsed << std::endl;
+	//std::cout << "Time to write = " << timeElapsed << std::endl;
+	std::cout << "\nFinished Everything!" << std::endl;
 
 	std::cin.get();
 }
