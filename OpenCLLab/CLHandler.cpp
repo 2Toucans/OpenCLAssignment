@@ -74,7 +74,7 @@ bool CLHandler::build(std::string kernelName, cl::Context *context, cl::Device *
 	*program = cl::Program(*context, sources);
 
 	//prints out any errors in the kernel code
-	if (program->build({ *device }) != CL_SUCCESS)
+	if (program->build() != CL_SUCCESS)
 	{
 		std::cout << "Error building: " << program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(*device) << "\n";
 		return false;
