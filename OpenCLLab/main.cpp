@@ -21,7 +21,7 @@ int width, height;
 int main()
 {
 	//FIRST DO IT WITH GPU
-
+	
 	//Gets the platforms and devices to be used
 	if (!CLHandler::setup(&platform, &devices, &context, 0))
 		std::cin.get();
@@ -82,7 +82,7 @@ int main()
 
 	std::cout << "Time to process = " << timeElapsed << std::endl;
 
-	stbi_write_png("../newimg.png", width, height, STBI_rgb_alpha, imageData, width * STBI_rgb_alpha);
+	stbi_write_png("../imggpu.png", width, height, STBI_rgb_alpha, imageData, width * STBI_rgb_alpha);
 
 	endTime = clock();
 	timeElapsed = (endTime - startTime) / 1000.0;
@@ -144,14 +144,14 @@ int main()
 
 	std::cout << "Time to process = " << timeElapsed << std::endl;
 
-	stbi_write_png("../newimg.png", width, height, STBI_rgb_alpha, imageData, width * STBI_rgb_alpha);
+	stbi_write_png("../imgcpu.png", width, height, STBI_rgb_alpha, imageData, width * STBI_rgb_alpha);
 
 	endTime = clock();
 	timeElapsed = (endTime - startTime) / 1000.0;
 
 	std::cout << "Time to write = " << timeElapsed << std::endl;
-
-
+	
+	
 	//THIRD DO IT WITH GPU AND CPU
 
 	//Gets the platforms and devices to be used
@@ -163,8 +163,6 @@ int main()
 		std::cin.get();
 
 	imageData = (unsigned int*)stbi_load("../img.png", &width, &height, NULL, STBI_rgb_alpha);
-
-	numPixels = width * height;
 
 	//Inbuffer won't be changed by kernel, host doesn't need it, kernel makes copy of vec
 	inBuf = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, sizeof(unsigned int) * numPixels, imageData, &err);
@@ -195,13 +193,15 @@ int main()
 	queue = cl::CommandQueue(context, devices[0]);
 	cl::CommandQueue queue2 = cl::CommandQueue(context, devices[1]);
 
-	err = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(numPixels / 2));
-	err = queue2.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(numPixels / 2 + half));
+	err = queue.enqueueNDRangeKernel(kernel, 0, cl::NDRange(numPixels / 2));
+	err = queue2.enqueueNDRangeKernel(kernel, numPixels / 2, cl::NDRange(numPixels / 2 + half));
+
+	unsigned int *result = new unsigned int[numPixels];
 
 	//Can also use enqueueMapBuffer, then memCopy, then unMap, to speed this up
-	err = queue.enqueueReadBuffer(outBuf, CL_FALSE, 0, sizeof(unsigned int) * (numPixels / 2), imageData);
-	err = queue2.enqueueReadBuffer(outBuf, CL_FALSE, sizeof(unsigned int) * (numPixels / 2), sizeof(unsigned int) * (numPixels / 2 + half), imageData);
-
+	err = queue.enqueueReadBuffer(outBuf, CL_FALSE, 0, sizeof(unsigned int) * (numPixels / 2), result);
+	err = queue2.enqueueReadBuffer(outBuf, CL_FALSE, sizeof(unsigned int) * numPixels / 2, sizeof(unsigned int) * (numPixels / 2 + half), result + (numPixels / 2));
+	
 	//Ensures everything is finished excecuting before continuing
 	cl::finish();
 
@@ -211,13 +211,13 @@ int main()
 
 	std::cout << "Time to process = " << timeElapsed << std::endl;
 
-	stbi_write_png("../newimg.png", width, height, STBI_rgb_alpha, imageData, width * STBI_rgb_alpha);
+	stbi_write_png("../imgboth.png", width, height, STBI_rgb_alpha, result, width * STBI_rgb_alpha);
 
 	endTime = clock();
 	timeElapsed = (endTime - startTime) / 1000.0;
 
 	std::cout << "Time to write = " << timeElapsed << std::endl;
-
+	
 
 	//FINALLY DO IT SERIALLY
 
