@@ -91,7 +91,7 @@ int main()
 
 
 	//SECOND DO IT WITH CPU
-
+	
 	//Gets the platforms and devices to be used
 	if (!CLHandler::setup(&platform, &devices, &context, 1))
 		std::cin.get();
@@ -151,7 +151,7 @@ int main()
 
 	std::cout << "Time to write = " << timeElapsed << std::endl;
 
-
+	/*
 	//THIRD DO IT WITH GPU AND CPU
 
 	//Gets the platforms and devices to be used
@@ -216,7 +216,7 @@ int main()
 	endTime = clock();
 	timeElapsed = (endTime - startTime) / 1000.0;
 
-	std::cout << "Time to write = " << timeElapsed << std::endl;
+	std::cout << "Time to write = " << timeElapsed << std::endl;*/
 
 
 	//FINALLY DO IT SERIALLY
