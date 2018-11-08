@@ -16,17 +16,33 @@ bool CLHandler::setup(cl::Platform *platform, std::vector<cl::Device> *devices, 
 	//Gets a list of all the hardware devices of a specified type that can be used for processing
 	std::vector<cl::Device> myDevices;
 
-	switch (deviceType)
+	for (int i = 0; i < platforms.size(); i++)
 	{
+		switch (deviceType)
+		{
 		case 0:
-			platforms[1].getDevices(CL_DEVICE_TYPE_GPU, &myDevices);
+			platforms[i].getDevices(CL_DEVICE_TYPE_GPU, &myDevices);
 			break;
 		case 1:
-			platforms[1].getDevices(CL_DEVICE_TYPE_CPU, &myDevices);
+			platforms[i].getDevices(CL_DEVICE_TYPE_CPU, &myDevices);
 			break;
 		case 2:
-			platforms[1].getDevices(CL_DEVICE_TYPE_ALL, &myDevices);
+			platforms[i].getDevices(CL_DEVICE_TYPE_ALL, &myDevices);
 			break;
+		}
+
+		if (deviceType < 2 && myDevices.size() > 0)
+		{
+			*platform = platforms[i];
+			*devices = myDevices;
+			break;
+		}
+		else if (deviceType == 2 && myDevices.size() > 1)
+		{
+			*platform = platforms[i];
+			*devices = myDevices;
+			break;
+		}
 	}
 
 	//If a device can't be found, setup fails
@@ -35,9 +51,6 @@ bool CLHandler::setup(cl::Platform *platform, std::vector<cl::Device> *devices, 
 		std::cout << "Could not find a device." << std::endl;
 		return false;
 	}
-
-	*platform = platforms[1]; //pick the first platform (for some reason mine shows 2 of the same platforms)
-	*devices = myDevices;
 
 	//Creates a context that contains the chosen device
 	*context = cl::Context(myDevices);
