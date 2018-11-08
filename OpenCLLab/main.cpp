@@ -18,10 +18,26 @@ int width, height;
 //Fun Fact: Basically every OpenCL function returns an error code for debugging
 //You can even pass in a reference to a cl_int to constructors to check for errors!
 
+unsigned int getPixel(unsigned int* inData, int x, int y, int w, int h) {
+	if (x < 0) {
+		x = 0;
+	}
+	else if (x > w - 1) {
+		x = w - 1;
+	}
+	if (y < 0) {
+		y = 0;
+	}
+	else if (y > h - 1) {
+		y = h - 1;
+	}
+	return inData[y * w + x];
+}
+
 int main()
 {
 	//FIRST DO IT WITH GPU
-	
+	std::cout << "=======================        GPU        =======================" << std::endl << std::endl;
 	//Gets the platforms and devices to be used
 	if (!CLHandler::setup(&platform, &devices, &context, 0))
 		std::cin.get();
@@ -35,10 +51,10 @@ int main()
 	unsigned int* imageData = (unsigned int*)stbi_load("../img.png", &width, &height, NULL, STBI_rgb_alpha);
 
 	int numPixels = width * height;
-	
+
 	//Inbuffer won't be changed by kernel, host doesn't need it, kernel makes copy of vec
 	cl::Buffer inBuf(context, CL_MEM_READ_ONLY | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, sizeof(unsigned int) * numPixels, imageData, &err);
-	
+
 	//Outbuffer will contain the kernel's output, which will be read by the host
 	cl::Buffer outBuf(context, CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY, sizeof(unsigned int) * numPixels, nullptr, &err);
 
@@ -70,8 +86,10 @@ int main()
 	//If unspecified compiler will decide for you
 	err = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(numPixels));
 
+	unsigned int *gpuData = new unsigned int[numPixels];
+
 	//Can also use enqueueMapBuffer, then memCopy, then unMap, to speed this up
-	err = queue.enqueueReadBuffer(outBuf, CL_FALSE, 0, sizeof(unsigned int) * numPixels, imageData);
+	err = queue.enqueueReadBuffer(outBuf, CL_FALSE, 0, sizeof(unsigned int) * numPixels, gpuData);
 
 	//Ensures everything is finished excecuting before continuing
 	cl::finish();
@@ -80,17 +98,18 @@ int main()
 	double timeElapsed = (endTime - startTime) / 1000.0;
 	startTime = endTime;
 
-	std::cout << "Time to process = " << timeElapsed << std::endl;
+	std::cout << "\nTime to process = " << timeElapsed << std::endl;
 
-	stbi_write_png("../imggpu.png", width, height, STBI_rgb_alpha, imageData, width * STBI_rgb_alpha);
+	stbi_write_png("../imggpu.png", width, height, STBI_rgb_alpha, gpuData, width * STBI_rgb_alpha);
 
 	endTime = clock();
 	timeElapsed = (endTime - startTime) / 1000.0;
 
-	std::cout << "Time to write = " << timeElapsed << std::endl;
+	//std::cout << "Time to write = " << timeElapsed << std::endl;
 
 
 	//SECOND DO IT WITH CPU
+	std::cout << std::endl << "=======================        CPU        =======================" << std::endl << std::endl;
 
 	//Gets the platforms and devices to be used
 	if (!CLHandler::setup(&platform, &devices, &context, 1))
@@ -132,8 +151,10 @@ int main()
 
 	err = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(numPixels));
 
+	unsigned int *cpuData = new unsigned int[numPixels];
+
 	//Can also use enqueueMapBuffer, then memCopy, then unMap, to speed this up
-	err = queue.enqueueReadBuffer(outBuf, CL_FALSE, 0, sizeof(unsigned int) * numPixels, imageData);
+	err = queue.enqueueReadBuffer(outBuf, CL_FALSE, 0, sizeof(unsigned int) * numPixels, cpuData);
 
 	//Ensures everything is finished excecuting before continuing
 	cl::finish();
@@ -142,17 +163,18 @@ int main()
 	timeElapsed = (endTime - startTime) / 1000.0;
 	startTime = endTime;
 
-	std::cout << "Time to process = " << timeElapsed << std::endl;
+	std::cout << "\nTime to process = " << timeElapsed << std::endl;
 
-	stbi_write_png("../imgcpu.png", width, height, STBI_rgb_alpha, imageData, width * STBI_rgb_alpha);
+	stbi_write_png("../imgcpu.png", width, height, STBI_rgb_alpha, cpuData, width * STBI_rgb_alpha);
 
 	endTime = clock();
 	timeElapsed = (endTime - startTime) / 1000.0;
 
-	std::cout << "Time to write = " << timeElapsed << std::endl;
-	
-	
+	//std::cout << "Time to write = " << timeElapsed << std::endl;
+
+
 	//THIRD DO IT WITH GPU AND CPU
+	std::cout << std::endl << "=======================     GPU & CPU     =======================" << std::endl << std::endl;
 
 	//Gets the platforms and devices to be used
 	if (!CLHandler::setup(&platform, &devices, &context, 2))
@@ -196,12 +218,12 @@ int main()
 	err = queue.enqueueNDRangeKernel(kernel, 0, cl::NDRange(numPixels / 2));
 	err = queue2.enqueueNDRangeKernel(kernel, numPixels / 2, cl::NDRange(numPixels / 2 + half));
 
-	unsigned int *result = new unsigned int[numPixels];
+	unsigned int *bothData = new unsigned int[numPixels];
 
 	//Can also use enqueueMapBuffer, then memCopy, then unMap, to speed this up
-	err = queue.enqueueReadBuffer(outBuf, CL_FALSE, 0, sizeof(unsigned int) * (numPixels / 2), result);
-	err = queue2.enqueueReadBuffer(outBuf, CL_FALSE, sizeof(unsigned int) * numPixels / 2, sizeof(unsigned int) * (numPixels / 2 + half), result + (numPixels / 2));
-	
+	err = queue.enqueueReadBuffer(outBuf, CL_FALSE, 0, sizeof(unsigned int) * (numPixels / 2), bothData);
+	err = queue2.enqueueReadBuffer(outBuf, CL_FALSE, sizeof(unsigned int) * numPixels / 2, sizeof(unsigned int) * (numPixels / 2 + half), bothData + (numPixels / 2));
+
 	//Ensures everything is finished excecuting before continuing
 	cl::finish();
 
@@ -209,18 +231,70 @@ int main()
 	timeElapsed = (endTime - startTime) / 1000.0;
 	startTime = endTime;
 
-	std::cout << "Time to process = " << timeElapsed << std::endl;
+	std::cout << "\nTime to process = " << timeElapsed << std::endl;
 
-	stbi_write_png("../imgboth.png", width, height, STBI_rgb_alpha, result, width * STBI_rgb_alpha);
+	stbi_write_png("../imgboth.png", width, height, STBI_rgb_alpha, bothData, width * STBI_rgb_alpha);
 
 	endTime = clock();
 	timeElapsed = (endTime - startTime) / 1000.0;
 
-	std::cout << "Time to write = " << timeElapsed << std::endl;
-	
+	//std::cout << "Time to write = " << timeElapsed << std::endl;
 
 	//FINALLY DO IT SERIALLY
+	std::cout << std::endl << "=======================      Serial       =======================" << std::endl << std::endl;
 
+	imageData = (unsigned int*)stbi_load("../img.png", &width, &height, NULL, STBI_rgb_alpha);
+
+	startTime = clock();
+
+	float gauss[] = {
+		0.058379266789788185f, 0.06705176688958259f,0.058379266789788185f,0.038530430847356856f,0.01927728703018819f,
+		0.06705176688958259f,0.0770126055060589f,0.06705176688958259f,0.044254297962235976f,0.022141013878541074f,
+		0.058379266789788185f,0.06705176688958259f,0.058379266789788185f,0.038530430847356856f,0.01927728703018819f,
+		0.038530430847356856f,0.044254297962235976f,0.038530430847356856f,0.025430160105104932f,0.012723047336580126f,
+		0.01927728703018819f,0.022141013878541074f,0.01927728703018819f,0.012723047336580126f,0.006365509806458638f
+	};
+	int kernelSize = 5;
+	int mid = kernelSize / 2;
+
+	// Code here
+	unsigned int *serialData = new unsigned int[numPixels];
+	for (int i = 0; i < numPixels; i++) {
+		int x = i % width;
+		int y = i / width;
+		float accR = 0.0f;
+		float accG = 0.0f;
+		float accB = 0.0f;
+
+		for (int i = 0; i < kernelSize; i++) {
+			for (int j = 0; j < kernelSize; j++) {
+				int kernelPos = i * kernelSize + j;
+				unsigned int col = getPixel(imageData, x + j - mid, y + i - mid, width, height);
+				int r = (col & 0xFF000000) >> 24;
+				int g = (col & 0x00FF0000) >> 16;
+				int b = (col & 0x0000FF00) >> 8;
+				accR += r * gauss[kernelPos];
+				accG += g * gauss[kernelPos];
+				accB += b * gauss[kernelPos];
+			}
+		}
+
+		serialData[i] = ((int)accR << 24) + ((int)accG << 16) + ((int)accB << 8) + (imageData[i] & 0x000000FF);
+	}
+
+	endTime = clock();
+	timeElapsed = (endTime - startTime) / 1000.0;
+	startTime = endTime;
+
+	std::cout << "Time to process = " << timeElapsed << std::endl;
+
+	stbi_write_png("../imgserial.png", width, height, STBI_rgb_alpha, serialData, width * STBI_rgb_alpha);
+
+	endTime = clock();
+	timeElapsed = (endTime - startTime) / 1000.0;
+
+	//std::cout << "Time to write = " << timeElapsed << std::endl;
+	std::cout << "\nFinished Everything!" << std::endl;
 
 	std::cin.get();
 }

@@ -16,17 +16,33 @@ bool CLHandler::setup(cl::Platform *platform, std::vector<cl::Device> *devices, 
 	//Gets a list of all the hardware devices of a specified type that can be used for processing
 	std::vector<cl::Device> myDevices;
 
-	switch (deviceType)
+	for (int i = 0; i < platforms.size(); i++)
 	{
+		switch (deviceType)
+		{
 		case 0:
-			platforms[0].getDevices(CL_DEVICE_TYPE_GPU, &myDevices);
+			platforms[i].getDevices(CL_DEVICE_TYPE_GPU, &myDevices);
 			break;
 		case 1:
-			platforms[0].getDevices(CL_DEVICE_TYPE_CPU, &myDevices);
+			platforms[i].getDevices(CL_DEVICE_TYPE_CPU, &myDevices);
 			break;
 		case 2:
-			platforms[0].getDevices(CL_DEVICE_TYPE_ALL, &myDevices);
+			platforms[i].getDevices(CL_DEVICE_TYPE_ALL, &myDevices);
 			break;
+		}
+
+		if (deviceType < 2 && myDevices.size() > 0)
+		{
+			*platform = platforms[i];
+			*devices = myDevices;
+			break;
+		}
+		else if (deviceType == 2 && myDevices.size() > 1)
+		{
+			*platform = platforms[i];
+			*devices = myDevices;
+			break;
+		}
 	}
 
 	//If a device can't be found, setup fails
@@ -36,22 +52,24 @@ bool CLHandler::setup(cl::Platform *platform, std::vector<cl::Device> *devices, 
 		return false;
 	}
 
-	*platform = platforms[0]; //pick the first platform (for some reason mine shows 2 of the same platforms)
-	*devices = myDevices; //arbitrarily pick the first device to use
-
-	//Prints the name and version of the platform being used
-	//std::cout << "Platform Name " << platform->getInfo<CL_PLATFORM_NAME>() << std::endl;
-	//std::cout << "Platform Version " << platform->getInfo<CL_PLATFORM_VERSION>() << std::endl;
-
-	//Prints the name and version of all available devices of the specified type
-	for (int i = 0; i < myDevices.size(); i++)
-	{
-		//std::cout << "Device " << i << " Name " << devices[i].getInfo<CL_DEVICE_NAME>() << std::endl;
-		//std::cout << "Device " << i << " Version " << devices[i].getInfo<CL_DEVICE_VERSION>() << std::endl;
-	}
-
 	//Creates a context that contains the chosen device
 	*context = cl::Context(myDevices);
+
+	//Prints the name and version of the platform being used
+	for (int i = 0; i < platforms.size(); i++)
+	{
+		std::cout << "Platform Name " << platforms[i].getInfo<CL_PLATFORM_NAME>() << std::endl;
+		std::cout << "Platform Version " << platforms[i].getInfo<CL_PLATFORM_VERSION>() << std::endl;
+
+		platforms[i].getDevices(CL_DEVICE_TYPE_ALL, &myDevices);
+
+		//Prints the name and version of all available devices of the specified type
+		for (int j = 0; j < myDevices.size(); j++)
+		{
+			std::cout << "Device " << j << " Name " << myDevices[j].getInfo<CL_DEVICE_NAME>() << std::endl;
+			std::cout << "Device " << j << " Version " << myDevices[j].getInfo<CL_DEVICE_VERSION>() << std::endl;
+		}
+	}
 
 	return true;
 }
